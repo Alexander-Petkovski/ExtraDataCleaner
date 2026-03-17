@@ -646,3 +646,131 @@ def _is_numeric_str(s: str) -> bool:
         return True
     except ValueError:
         return False
+
+
+# ── sorting ───────────────────────────────────────────────────────────────────
+
+SORT_METHODS = {
+    "natural":     "Natural (A1 < A2 < A10)",
+    "alpha":       "Alphabetical (A–Z)",
+    "numeric":     "Numeric (0 → 9)",
+    "date":        "Date (oldest → newest)",
+    "length":      "By length (shortest → longest)",
+    "frequency":   "By frequency (most common first)",
+}
+
+
+def sort_dataframe(
+    df:     pd.DataFrame,
+    specs:  list[dict],
+    report: list[str] | None = None,
+) -> pd.DataFrame:
+    """
+    Permanently sort a DataFrame by one or more rules.
+
+    Each spec is a dict with keys:
+        column    : str   — column name
+        direction : str   — 'asc' | 'desc'
+        method    : str   — 'natural' | 'alpha' | 'numeric' |
+                            'date' | 'length' | 'frequency'
+
+    Rules are applied in order from first to last (multi-key stable sort).
+    Later rules act as tiebreakers for earlier ones.
+    """
+    if not specs or df.empty:
+        return df
+
+    df = df.copy()
+
+    # Apply specs in REVERSE order so primary key (first spec) wins.
+    # Pandas stable sort preserves relative order from the previous pass.
+    for spec in reversed(specs):
+        col    = spec.get("column", "")
+        asc    = spec.get("direction", "asc") == "asc"
+        method = spec.get("method", "natural")
+
+        if col not in df.columns:
+            # Try snake_case fallback: "Last Name" → "last_name"
+            snake_col = _to_snake(col)
+            if snake_col in df.columns:
+                if report is not None:
+                    report.append(
+                        f"Sort: column '{col}' resolved to '{snake_col}' (snake_case)."
+                    )
+                col = snake_col
+            else:
+                # Case-insensitive fallback (catches mixed-case mismatches)
+                lower_map = {c.lower(): c for c in df.columns}
+                matched = lower_map.get(col.lower()) or lower_map.get(snake_col.lower())
+                if matched:
+                    if report is not None:
+                        report.append(
+                            f"Sort: column '{col}' resolved to '{matched}' (case-insensitive)."
+                        )
+                    col = matched
+                else:
+                    if report is not None:
+                        report.append(f"Sort: column '{col}' not found, skipping.")
+                    continue
+
+        try:
+            if method == "numeric":
+                key = pd.to_numeric(df[col], errors="coerce")
+                df  = df.assign(_k=key).sort_values(
+                    "_k", ascending=asc, na_position="last", kind="stable"
+                ).drop(columns="_k")
+
+            elif method == "date":
+                key = pd.to_datetime(df[col], errors="coerce", dayfirst=True)
+                df  = df.assign(_k=key).sort_values(
+                    "_k", ascending=asc, na_position="last", kind="stable"
+                ).drop(columns="_k")
+
+            elif method == "length":
+                key = df[col].fillna("").astype(str).str.len()
+                df  = df.assign(_k=key).sort_values(
+                    "_k", ascending=asc, na_position="last", kind="stable"
+                ).drop(columns="_k")
+
+            elif method == "frequency":
+                freq = df[col].value_counts(ascending=False)
+                key  = df[col].map(freq).fillna(0)
+                # Most-common first when asc=True (frequency desc = value asc)
+                df   = df.assign(_k=key).sort_values(
+                    "_k", ascending=not asc, na_position="last", kind="stable"
+                ).drop(columns="_k")
+
+            elif method == "natural":
+                try:
+                    from natsort import natsort_keygen
+                    nk = natsort_keygen(key=lambda v: str(v).lower())
+                    key = df[col].fillna("").map(nk)
+                    df  = df.assign(_k=key).sort_values(
+                        "_k", ascending=asc, na_position="last", kind="stable"
+                    ).drop(columns="_k")
+                except ImportError:
+                    # Graceful fallback to alphabetical
+                    df = df.sort_values(
+                        col, ascending=asc,
+                        key=lambda s: s.fillna("").astype(str).str.lower(),
+                        na_position="last", kind="stable"
+                    )
+
+            else:  # alpha
+                df = df.sort_values(
+                    col, ascending=asc,
+                    key=lambda s: s.fillna("").astype(str).str.lower(),
+                    na_position="last", kind="stable"
+                )
+
+            if report is not None:
+                dir_str = "ascending" if asc else "descending"
+                report.append(
+                    f"Sorted by '{col}'  [{SORT_METHODS.get(method, method)}, {dir_str}]"
+                )
+
+        except Exception as exc:
+            if report is not None:
+                report.append(f"Sort error on '{col}': {exc}")
+
+    return df.reset_index(drop=True)
