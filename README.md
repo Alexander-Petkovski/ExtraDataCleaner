@@ -1,7 +1,6 @@
 # ExtraDataCleaner
 
-A standalone Windows application for comprehensive CSV and Excel file formatting. Drop in a messy spreadsheet, get back a clean one — no Python installation required to run.
-
+A standalone Windows application for comprehensive CSV and Excel file formatting. Drop in a a buggered up spreadsheet, get back a clean one with on button, or customise your output. 
 ![Platform](https://img.shields.io/badge/platform-Windows-blue)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
