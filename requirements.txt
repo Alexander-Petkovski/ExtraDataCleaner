@@ -1,0 +1,12 @@
+# ExtraDataCleaner — runtime dependencies
+# Install with:  pip install -r requirements.txt
+
+pandas>=2.0.0
+numpy>=1.24.0
+openpyxl>=3.1.0       # Excel read/write (.xlsx, .xlsm)
+chardet>=5.0.0        # Encoding detection
+python-dateutil>=2.8.2
+
+# ── to build the .exe (Windows) ─────────────────────────────────────────────
+# Just run  build_exe.bat  — it installs everything automatically.
+# Or manually:  pip install pyinstaller && pyinstaller ExtraDataCleaner.spec
