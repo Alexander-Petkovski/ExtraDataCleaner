@@ -1,123 +1,135 @@
 # ExtraDataCleaner
 
-A standalone Windows application for comprehensive CSV and Excel file formatting. Drop in a a buggered up spreadsheet, get back a clean one with on button, or customise your output. 
-![Platform](https://img.shields.io/badge/platform-Windows-blue)
-![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+> **One-click cleanup for messy CSV and Excel files and no extra work required.**
+
+---
+
+## The Problem
+
+If you've ever received a spreadsheet from a client, an external system, or a colleague, you already know: **the data is never clean.**, it's probably buggered.
+
+You open it and find things like:
+
+- Currency symbols stuck inside number columns (`$1,234.56` instead of `1234.56`)
+- A mix of ways to say "nothing" , some cells say `N/A`, others say `null`, `none`, `-`, `missing`, or just nothing at all
+- Numbers that look like numbers but Excel treats as text, so your formulas break
+- Columns named `First Name` when your system expects `first_name`
+- Negative numbers written as `(500.00)` instead of `-500.00`
+- Percentages written as `75%` instead of `0.75`
+- Hidden rows, merged cells, and junk title rows sitting above the real data
+- Files saved in the wrong encoding so special characters come out as `â€™` garbage
+
+Before you can actually use the data, go to analyse it, import it, run reports on it, **you have to fix all of this manually.** That can take hours, and it has to be done every single time a new file arrives.
+
+**ExtraDataCleaner fixes all of it automatically, in seconds.**
 
 ---
 
 ## What It Does
 
-ExtraDataCleaner fixes every common formatting problem found in real-world CSV and Excel files so they load cleanly into pandas, Power BI, or any other tool without any further manual cleanup.
+Drop in a CSV or Excel file, click **Run Cleaner**, and get back a clean, consistent, analysis-ready file. No formulas. No macros. No Python knowledge needed.
 
-| Problem | Fix Applied |
+It handles over 30 categories of data problems:
+
+| Problem | What ExtraDataCleaner does |
 |---|---|
-| BOM characters, mixed encodings | Auto-detected, normalised to UTF-8 |
-| CRLF / mixed line endings | Normalised |
-| Title or metadata rows above the real header | Auto-skipped |
-| Wrong delimiter (`;` `\t` `\|` instead of `,`) | Auto-detected, ignores commas inside quoted fields |
-| Leading / trailing whitespace in cells | Stripped |
-| Stray wrapping quotes around cell values | Removed |
-| Null variants — `N/A`, `none`, `null`, `-`, `#N/A`, `nan` … | Unified to real `NaN` |
-| Excel errors — `#VALUE!`, `#REF!`, `#DIV/0!` … | Replaced with `NaN` |
-| Currency symbols — `$` `€` `£` `¥` … | Stripped |
-| Thousands separators — `1,234` and EU-style `1.234` | Removed |
-| Decimal comma — `1.234,56` | Converted to `1234.56` |
-| Accounting negatives — `(500.00)` | Converted to `-500.0` |
-| Percentages — `87.5%` | Converted to `0.875` float |
-| Numbers stored as text | Coerced to `int64` / `float64` |
-| Boolean strings — `yes/no/TRUE/Y/1/false` | Coerced to Python `bool` |
-| Column names with spaces, special characters, duplicates | Cleaned to `snake_case` |
-| Fully empty rows and columns | Dropped |
-| Excel merged cells | Forward-filled |
-| Hidden Excel rows / columns | Dropped (optional) |
-| Multi-sheet Excel files | All sheets processed, output as separate CSVs or a single `.xlsx` |
+| `$1,234.56` / `£99.00` / `€1.499,99` | Strips symbols, fixes decimal format → `1234.56` |
+| `(500.00)` accounting negatives | Converts to proper `-500.00` |
+| `75%` percentages | Converts to numeric `75.0` |
+| `N/A`, `null`, `none`, `missing`, `-`, `--` | Unified to a single blank (NaN) |
+| `yes` / `Y` / `1` / `True` / `on` | Normalised to `True` / `False` |
+| `#VALUE!`, `#REF!`, `#DIV/0!` | Replaced with blank |
+| `First Name`, `Total Sales ($)` | Cleaned to `first_name`, `total_sales` |
+| Numbers stored as text | Converted to real numeric values |
+| Merged cells in Excel | Forward-filled so every row has a value |
+| Hidden rows / columns | Detected and removed |
+| Junk title rows above the real header | Auto-detected and skipped |
+| BOM characters, wrong encoding, mixed line endings | Normalised to clean UTF-8 |
+| Fully blank rows or columns | Removed automatically |
+
+It also includes a **Sort** feature — reorder rows by any column (alphabetically, numerically, by date, by frequency, or natural alphanumeric order) with the sorted result permanently written to the output file.
 
 ---
 
-## Running the Application
+## Download
 
-### Option A — Double-click the .exe (no setup required)
+**→ [Download ExtraDataCleaner.exe](../../releases/latest)** — double-click to run, no installation needed.
 
-Download `ExtraDataCleaner.exe` and double-click it. You should be sweet.
+Runs on Windows. No Python. No setup.
 
-### Option B — Run from source
+---
+
+## How to Use
+
+### The easy way (GUI)
+
+1. Double-click `ExtraDataCleaner.exe`
+2. Click **Browse** and select your CSV or Excel file(s)
+3. Choose your output options (same folder, different folder, CSV or Excel output)
+4. Optionally add sort rules
+5. Click **Run Cleaner**
+
+The cleaned file is saved next to your original with `_clean` added to the filename (e.g. `sales_data_clean.csv`).
+
+### The power way (command line)
 
 ```bash
-pip install -r requirements.txt
-python cleaner.py
-```
+# Clean a single file
+ExtraDataCleaner.exe data/sales.csv
 
-### Option C — CLI usage
-
-```bash
-# Clean a CSV
-python cleaner.py data/sales.csv
-
-# Clean an Excel file (all sheets → separate CSVs)
-python cleaner.py data/report.xlsx
-
-# Specific sheet only
-python cleaner.py data/report.xlsx --sheet "Sales Q1"
-
-# Write output to a specific folder
-python cleaner.py data/sales.csv --output-dir cleaned/
+# Clean and sort by last name A→Z
+ExtraDataCleaner.exe data/customers.csv --sort-by "last_name:asc:natural"
 
 # Output as Excel instead of CSV
-python cleaner.py data/report.xlsx --format xlsx
+ExtraDataCleaner.exe data/report.xlsx --format xlsx
 
-# Dry run — print report without writing any files
-python cleaner.py data/sales.csv --dry-run
-
-# Force header at row 3 (0-based)
-python cleaner.py messy.csv --header-row 3
-
-# Keep original column capitalisation (no snake_case)
-python cleaner.py data/sales.csv --no-snake-case
+# Preview what would be cleaned without writing any files
+ExtraDataCleaner.exe data/sales.csv --dry-run
 ```
 
-**All CLI flags:**
+### All command-line options
 
-| Flag | Default | Description |
-|---|---|---|
-| `--output-dir PATH` | Same as input | Directory for output files |
-| `--output-suffix STR` | `_clean` | Suffix added before extension |
-| `--format {csv,xlsx}` | `csv` | Output format |
-| `--sheet NAME` | All sheets | Excel: process this sheet only |
-| `--header-row N` | Auto-detect | Force header at row N (0-based) |
-| `--no-snake-case` | — | Keep original column capitalisation |
-| `--no-null-unify` | — | Don't replace null-like strings with NaN |
-| `--no-numeric-coerce` | — | Don't parse numeric columns |
-| `--no-bool-coerce` | — | Don't normalise boolean columns |
-| `--keep-empty-rows` | — | Don't drop fully-empty rows |
-| `--keep-empty-cols` | — | Don't drop fully-empty columns |
-| `--keep-hidden` | — | Include hidden Excel rows/columns |
-| `--dry-run` | — | Report only, no files written |
-| `--encoding ENC` | `utf-8-sig` | Output CSV encoding |
+| Option | Description |
+|---|---|
+| `--output-dir PATH` | Where to save the cleaned file (default: same folder as input) |
+| `--output-suffix STR` | Text added before the extension (default: `_clean`) |
+| `--format csv\|xlsx` | Output as CSV or Excel (default: csv) |
+| `--sheet NAME` | Excel only: process one specific sheet |
+| `--header-row N` | Force the header to a specific row number (default: auto-detect) |
+| `--no-snake-case` | Keep original column names as-is |
+| `--no-null-unify` | Don't replace null-like strings with blank |
+| `--no-numeric-coerce` | Don't convert text to numbers |
+| `--no-bool-coerce` | Don't normalise yes/no/true/false columns |
+| `--keep-empty-rows` | Don't remove blank rows |
+| `--keep-empty-cols` | Don't remove blank columns |
+| `--keep-hidden` | Include hidden Excel rows and columns |
+| `--dry-run` | Print a report of what would change, without writing anything |
+| `--sort-by SPEC` | Sort after cleaning — format: `"column:asc\|desc:method"` |
+
+**Sort methods:** `natural` (A1 < A2 < A10) · `alpha` (A–Z) · `numeric` (0→9) · `date` (oldest→newest) · `length` (shortest→longest) · `frequency` (most common first)
 
 ---
 
-## Building the .exe
+## Building from Source
 
-> Only needed if you want to compile it yourself. Pre-built releases are available on the [Releases](../../releases) page.
+Requires Python 3.10+ and Windows.
 
-**Requirements:** Python 3.10+ installed on Windows with "Add Python to PATH" checked.
-
-1. Open a terminal inside the `ExtraDataCleaner` folder
-2. Run:
-
-```bat
+```
 build_exe.bat
 ```
 
-The script will:
-- Install all required packages including PyInstaller and Pillow
-- Generate `icon.ico` (multi-resolution brush icon)
-- Compile everything into a single `ExtraDataCleaner.exe`
-- Offer to clean up the build folders
+Finds Python automatically, installs all dependencies, and produces a standalone `ExtraDataCleaner.exe`. The resulting exe runs on any Windows machine with no Python required.
 
-Build time is roughly 1–3 minutes on first run.
+**Dependencies:**
+
+| Package | Why it's needed |
+|---|---|
+| `pandas` | Core data loading, transformation and export |
+| `numpy` | Numeric operations |
+| `openpyxl` | Reading and writing Excel files |
+| `chardet` | Auto-detects file encoding |
+| `python-dateutil` | Date parsing |
+| `natsort` | Natural sort order (Item 2 before Item 10) |
 
 ---
 
@@ -125,49 +137,25 @@ Build time is roughly 1–3 minutes on first run.
 
 ```
 ExtraDataCleaner/
-├── cleaner.py              # CLI entry point — launches GUI if no args given
-├── core.py                 # DataCleaner class — all cleaning logic lives here
-├── gui.py                  # Windows classic-themed tkinter GUI
-├── make_icon.py            # Build-time brush icon generator (Pillow + pure-Python fallback)
-├── ExtraDataCleaner.spec   # PyInstaller build configuration
-├── build_exe.bat           # One-click Windows .exe builder
-└── requirements.txt        # Runtime dependencies
-```
-
-### core.py — DataCleaner
-
-The `DataCleaner` class can be used directly in your own scripts:
-
-```python
-from core import DataCleaner
-
-cleaner = DataCleaner(
-    snake_case=True,        # Convert column names to snake_case
-    unify_nulls=True,       # Replace null-like strings with NaN
-    numeric_coerce=True,    # Parse numbers stored as text
-    bool_coerce=True,       # Normalise yes/no/TRUE etc. to bool
-    drop_empty_rows=True,
-    drop_empty_cols=True,
-    skip_hidden=True,       # Ignore hidden Excel rows/cols
-)
-
-frames = cleaner.clean_file("my_data.xlsx")  # returns {sheet_name: DataFrame}
-df = frames["Sheet1"]
-
-print(cleaner.get_report())  # Human-readable log of every change made
+├── cleaner.py        # Command-line entry point
+├── core.py           # All cleaning logic (DataCleaner class)
+├── gui.py            # Desktop GUI (Windows classic theme)
+├── make_icon.py      # Generates the app icon at build time
+├── build_exe.bat     # One-click .exe builder for Windows
+├── ExtraDataCleaner.spec  # PyInstaller packaging config
+└── requirements.txt  # Python dependencies
 ```
 
 ---
 
-## Dependencies
+## Companion Tool
 
-| Package | Purpose |
-|---|---|
-| `pandas` | DataFrame operations |
-| `numpy` | Numeric type handling |
-| `openpyxl` | Excel read/write |
-| `chardet` | Encoding detection |
-| `python-dateutil` | Date parsing |
-| `pillow` *(build only)* | Icon generation |
-| `pyinstaller` *(build only)* | .exe compilation |
+**ExtraDataGenerator** → [github.com/Alexander-Petkovski/ExtraDataGenerator](https://github.com/Alexander-Petkovski/ExtraDataGenerator)
 
+Generates intentionally messy CSV/Excel test files with the exact problems ExtraDataCleaner fixes for useful for testing, demos, and regression checks.
+
+---
+
+## License
+
+MIT
